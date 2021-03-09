@@ -31,7 +31,7 @@ app.use(express.static(__dirname + '/public'))
 app.get('*', function (request, response){
     response.sendFile(path.resolve(__dirname, 'public', 'index.html'))
   })
-app.listen(3306,function(err){
+app.listen(4200,function(err){
     if(err) throw err;
-    console.log("The port is connecte on 3306")
+    console.log("The port is connecte on 4200")
 })
