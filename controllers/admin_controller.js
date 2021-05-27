@@ -1,4 +1,5 @@
 var db = require('../config/db');
+var bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 var nodemailer = require('nodemailer');
 
@@ -30,14 +31,39 @@ exports.adminSignIn = function (req, res){
                 error:"Invalid EmailID or password"
             });
 
-        else if(rows.length === 0 || rows[0].password !== password)
+        else if(rows.length === 0)
                 return res.status(422).json({
                     status: "failed",
                     error:"Invalid EmailID or password"
                 });
-        else{
-            const token = jwt.sign({emailID}, 'my-secret-key');
-            res.json({status: "success", token, emailID})
+        else if(rows.length === 1){
+            let hashedPassword = rows[0].password;
+            bcrypt.compare(password, hashedPassword, function(err2, bcresult) {
+                logger.info('err2 =', err2);
+                logger.info("bcresult=", bcresult);
+                //If password matched
+                if(bcresult == true){
+                    const token = jwt.sign({email_id}, 'my-secret-key');
+                    return res.status(200).json(
+                    //     {
+                    //     status: 'success',
+                    //     customer: result[0],
+                    //     token
+                    // }
+                    {status: "success", token, emailID}
+                    );
+                }
+                else{
+                    //If password not matched
+                    return res.status(502).json({
+                        status: 'failed',
+                        message: 'Invalid email id or password.'
+                    });
+                }
+            });
+
+            // const token = jwt.sign({emailID}, 'my-secret-key');
+            // res.json({status: "success", token, emailID})
         }
     });
 }
