@@ -14,8 +14,8 @@ var transporter = nodemailer.createTransport({
 
 // Admin SignIn
 exports.adminSignIn = function (req, res){
-    console.log(req.body);
-    console.log("from adminSignIn");
+    logger.info(req.body);
+    logger.info("from adminSignIn");
     const {emailID, password} = req.body
     if(!emailID || !password){
        return res.status(422).json({
@@ -75,7 +75,7 @@ exports.adminSignIn = function (req, res){
 
 // Admin Change Password
 exports.changeAdminPassword = async function (req, res){
-    console.log(req.body);
+    logger.info(req.body);
     const {emailID, oldPassword, newPassword} = req.body
     if(!emailID || !oldPassword || !newPassword){
        return res.status(422).json({
@@ -95,7 +95,8 @@ exports.changeAdminPassword = async function (req, res){
         })
     let sql = 'SELECT * from asm_admin where email_id = ? '
     const salt = await bcrypt.genSalt(11);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    const oldHashedPassword = await bcrypt.hash(oldPassword, salt);
+    const newHashedPassword = await bcrypt.hash(newPassword, salt);
     
     db.query(sql, [emailID], (err, rows, fields)=>{
         if(err) 
@@ -104,32 +105,54 @@ exports.changeAdminPassword = async function (req, res){
                 error:"Invalid EmailID "
             });
 
-        else if(rows.length === 0 || rows[0].password !== oldPassword)
+        else if(rows.length === 0)
                 return res.status(422).json({
                     status: "failed",
                     error:"Invalid EmailID or password"
                 });
-        else{
-            db.query("UPDATE asm_admin SET password = ? where email_id= ? ", 
-                [newPassword, emailID], function (err, rows) {
-                    if(err) 
-                        return res.status(422).json({
-                            status: "failed",
-                            error: err.message
-                        });
-                    console.log(rows);
+        else if(rows.length === 1){
+            let dbHashedPassword = rows[0].password;
+            bcrypt.compare(oldHashedPassword, dbHashedPassword, function(err2, bcresult) {
+                logger.info('err2 =', err2);
+                logger.info("bcresult=", bcresult);
+                
+                //If password not matched
+                if(bcresult == false){
+                    return res.status(200).json({
+                            status: "failed", 
+                            key: 'INVALID_OLD_PASSWORD', 
+                            message: "Invalid Old Password"
+                        }
+                    );
+                }
+                else{
+                    //If password matched then update old password with new password.
+                    db.query("UPDATE asm_admin SET password = ? where email_id= ? ", 
+                        [newHashedPassword, emailID], function (er3, rows) {
+                            logger.info('err3 =', err3);
+                            logger.info("query result=", rows);
+                        if(err3) 
+                            return res.status(422).json({
+                                status: "failed",
+                                error: err.message
+                            });
+                        logger.info(rows);
                     res.json({ 
                         status: "success", 
                         msg: "Password is changed successfully"
                     });
             })
+                }
+            });
+
+            
         }
     });
 }
 // Admin forgot password
 exports.adminForgotPassword = function (req, res){
-    console.log(req.body);
-    console.log("from Forgotpassword");
+    logger.info(req.body);
+    logger.info("from Forgotpassword");
     const {emailID } = req.body
     if(!emailID){
        return res.status(422).json({
@@ -140,8 +163,8 @@ exports.adminForgotPassword = function (req, res){
      let sql = 'SELECT * from asm_admin where email_id = ? '   
     
     db.query(sql, [emailID], (err, rows, fields)=>{
-        console.log("err:",err);
-        console.log("rows length :",rows)
+        logger.info("err:",err);
+        logger.info("rows length :",rows)
         if(err) 
             return res.status(422).json({
                 status: "failed",
@@ -172,9 +195,9 @@ exports.adminForgotPassword = function (req, res){
               };
               transporter.sendMail(mailOptions, function(error, info){
                 if (error) {
-                  console.log(error);
+                    logger.info(error);
                 } else {
-                  console.log('Email sent: ' + info.response);
+                    logger.info('Email sent: ' + info.response);
                   res.send({status:true});                }
               });
               
