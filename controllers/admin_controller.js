@@ -99,6 +99,8 @@ exports.changeAdminPassword = async function (req, res){
     const newHashedPassword = await bcrypt.hash(newPassword, salt);
     
     db.query(sql, [emailID], (err, rows, fields)=>{
+        logger.info('err =', err);
+        logger.info("query result=", rows);
         if(err) 
             return res.status(422).json({
                 status: "failed",
@@ -112,7 +114,7 @@ exports.changeAdminPassword = async function (req, res){
                 });
         else if(rows.length === 1){
             let dbHashedPassword = rows[0].password;
-            bcrypt.compare(oldHashedPassword, dbHashedPassword, function(err2, bcresult) {
+            bcrypt.compare(oldPassword, dbHashedPassword, function(err2, bcresult) {
                 logger.info('err2 =', err2);
                 logger.info("bcresult=", bcresult);
                 
@@ -128,24 +130,22 @@ exports.changeAdminPassword = async function (req, res){
                 else{
                     //If password matched then update old password with new password.
                     db.query("UPDATE asm_admin SET password = ? where email_id= ? ", 
-                        [newHashedPassword, emailID], function (er3, rows) {
+                        [newHashedPassword, emailID], function (err3, result) {
                             logger.info('err3 =', err3);
-                            logger.info("query result=", rows);
+                            logger.info("query result=", result);
                         if(err3) 
                             return res.status(422).json({
                                 status: "failed",
-                                error: err.message
+                                error: err3.message
                             });
-                        logger.info(rows);
-                    res.json({ 
-                        status: "success", 
-                        msg: "Password is changed successfully"
-                    });
-            })
+                        
+                        return res.json({ 
+                            status: "success", 
+                            msg: "Password is changed successfully"
+                        });
+                    })
                 }
             });
-
-            
         }
     });
 }
