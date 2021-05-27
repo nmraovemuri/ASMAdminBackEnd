@@ -2,6 +2,7 @@ var db = require('../config/db');
 var bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 var nodemailer = require('nodemailer');
+const logger = require('../utils/admin_logger');
 
 var transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -22,7 +23,7 @@ exports.adminSignIn = function (req, res){
            error:"Please add emailID and password"
         })
     }
-     let sql = 'SELECT * from asm_admin where email_id = ? '   
+    let sql = 'SELECT * from asm_admin where email_id = ? '   
     
     db.query(sql, [emailID], (err, rows, fields)=>{
         if(err) 
@@ -32,10 +33,10 @@ exports.adminSignIn = function (req, res){
             });
 
         else if(rows.length === 0)
-                return res.status(422).json({
-                    status: "failed",
-                    error:"Invalid EmailID or password"
-                });
+            return res.status(422).json({
+                status: "failed",
+                error:"Invalid EmailID or password"
+            });
         else if(rows.length === 1){
             let hashedPassword = rows[0].password;
             bcrypt.compare(password, hashedPassword, function(err2, bcresult) {
@@ -50,7 +51,11 @@ exports.adminSignIn = function (req, res){
                     //     customer: result[0],
                     //     token
                     // }
-                    {status: "success", token, emailID}
+                        {
+                            status: "success", 
+                            token, 
+                            emailID
+                        }
                     );
                 }
                 else{
@@ -69,7 +74,7 @@ exports.adminSignIn = function (req, res){
 }
 
 // Admin Change Password
-exports.changeAdminPassword = function (req, res){
+exports.changeAdminPassword = async function (req, res){
     console.log(req.body);
     const {emailID, oldPassword, newPassword} = req.body
     if(!emailID || !oldPassword || !newPassword){
@@ -89,6 +94,8 @@ exports.changeAdminPassword = function (req, res){
             error:"While change password,  old password and new password should not be same"
         })
     let sql = 'SELECT * from asm_admin where email_id = ? '
+    const salt = await bcrypt.genSalt(11);
+    const hashedPassword = await bcrypt.hash(password, salt);
     
     db.query(sql, [emailID], (err, rows, fields)=>{
         if(err) 
