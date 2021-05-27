@@ -44,7 +44,7 @@ exports.adminSignIn = function (req, res){
                 logger.info("bcresult=", bcresult);
                 //If password matched
                 if(bcresult == true){
-                    const token = jwt.sign({email_id}, 'my-secret-key');
+                    const token = jwt.sign({emailID}, 'my-secret-key');
                     return res.status(200).json(
                     //     {
                     //     status: 'success',
